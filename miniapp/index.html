@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>OWL Terminal - Mini App</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: 'Segoe UI', Tahoma, sans-serif;
+            background: var(--tg-theme-bg-color, #0a0a1a);
+            color: var(--tg-theme-text-color, #eee);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+        .header {
+            background: linear-gradient(135deg, #1a1a3e 0%, #0a0a2e 100%);
+            padding: 20px;
+            text-align: center;
+            border-bottom: 2px solid #00ff88;
+        }
+        .header h1 { color: #00ff88; font-size: 1.5em; }
+        .header p { color: #888; font-size: 0.9em; margin-top: 5px; }
+        .container { padding: 15px; }
+        .card {
+            background: var(--tg-theme-secondary-bg-color, #1a1a2e);
+            border-radius: 12px;
+            padding: 15px;
+            margin-bottom: 12px;
+            border: 1px solid #333;
+        }
+        .card h3 { color: #00ff88; margin-bottom: 10px; font-size: 1.1em; }
+        .card p { color: #aaa; font-size: 0.9em; line-height: 1.5; }
+        .balance {
+            font-size: 2em;
+            color: #00ff88;
+            text-align: center;
+            padding: 20px;
+        }
+        .balance small { font-size: 0.5em; color: #888; }
+        .btn {
+            display: block;
+            width: 100%;
+            padding: 12px;
+            margin: 8px 0;
+            border: none;
+            border-radius: 8px;
+            font-size: 1em;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.3s;
+        }
+        .btn-primary { background: #00ff88; color: #0a0a1a; font-weight: bold; }
+        .btn-secondary { background: #333; color: #eee; }
+        .btn-warning { background: #ff8800; color: #0a0a1a; }
+        .btn-danger { background: #ff4444; color: #fff; }
+        .btn:active { transform: scale(0.98); }
+        .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .stat { text-align: center; padding: 10px; }
+        .stat .value { font-size: 1.5em; color: #00ff88; font-weight: bold; }
+        .stat .label { font-size: 0.8em; color: #888; }
+        .price-item {
+            display: flex;
+            justify-content: space-between;
+            padding: 8px 0;
+            border-bottom: 1px solid #333;
+        }
+        .price-item:last-child { border-bottom: none; }
+        .price-up { color: #00ff88; }
+        .price-down { color: #ff4444; }
+        .airdrop-item, .bot-item {
+            background: #0a0a1a;
+            border-radius: 8px;
+            padding: 10px;
+            margin: 8px 0;
+            border-left: 3px solid #00ff88;
+        }
+        .airdrop-item .name, .bot-item .name { font-weight: bold; color: #fff; }
+        .airdrop-item .reward, .bot-item .earning { color: #00ff88; font-size: 0.9em; }
+        .airdrop-item .status { font-size: 0.8em; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-top: 5px; }
+        .status-active { background: #00ff8833; color: #00ff88; }
+        .status-potential { background: #ff880033; color: #ff8800; }
+        .status-rumored { background: #88888833; color: #888; }
+        .tab-bar {
+            display: flex;
+            background: #1a1a2e;
+            border-radius: 12px;
+            padding: 5px;
+            margin-bottom: 15px;
+        }
+        .tab {
+            flex: 1;
+            padding: 10px;
+            text-align: center;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.85em;
+            color: #888;
+        }
+        .tab.active { background: #00ff88; color: #0a0a1a; font-weight: bold; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        .terminal {
+            background: #000;
+            border-radius: 8px;
+            padding: 10px;
+            font-family: monospace;
+            font-size: 0.85em;
+            max-height: 200px;
+            overflow-y: auto;
+            color: #0f0;
+        }
+        .terminal .line { margin: 2px 0; }
+        .terminal .prompt { color: #00ff88; }
+        .terminal .output { color: #aaa; }
+        .terminal .error { color: #ff4444; }
+        .input-field {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #333;
+            border-radius: 8px;
+            background: #0a0a1a;
+            color: #eee;
+            font-family: monospace;
+            margin-top: 10px;
+        }
+        .checkin-btn {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+            color: #0a0a1a;
+            font-weight: bold;
+            padding: 15px;
+            border-radius: 12px;
+            text-align: center;
+            cursor: pointer;
+            margin: 10px 0;
+        }
+        .checkin-btn.done { background: #333; color: #888; }
+        .notification {
+            position: fixed;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            background: #00ff88;
+            color: #0a0a1a;
+            padding: 12px;
+            border-radius: 8px;
+            text-align: center;
+            font-weight: bold;
+            z-index: 1000;
+            display: none;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #888;
+        }
+        .spinner {
+            width: 30px;
+            height: 30px;
+            border: 3px solid #333;
+            border-top-color: #00ff88;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="notification" id="notification"></div>
+
+    <div class="header">
+        <h1>🦉 OWL Terminal</h1>
+        <p>Your Complete Telegram OS</p>
+    </div>
+
+    <div class="container">
+        <!-- Tab Bar -->
+        <div class="tab-bar">
+            <div class="tab active" onclick="showTab('dashboard')">📊 Dashboard</div>
+            <div class="tab" onclick="showTab('wallet')">💰 Wallet</div>
+            <div class="tab" onclick="showTab('earn')">🤑 Earn</div>
+            <div class="tab" onclick="showTab('terminal')">💻 Terminal</div>
+        </div>
+
+        <!-- Dashboard Tab -->
+        <div class="tab-content active" id="tab-dashboard">
+            <div class="card">
+                <h3>📊 System Status</h3>
+                <div class="grid">
+                    <div class="stat">
+                        <div class="value" id="stat-services">9</div>
+                        <div class="label">Services</div>
+                    </div>
+                    <div class="stat">
+                        <div class="value" id="stat-uptime">0h</div>
+                        <div class="label">Uptime</div>
+                    </div>
+                    <div class="stat">
+                        <div class="value" id="stat-requests">0</div>
+                        <div class="label">Requests</div>
+                    </div>
+                    <div class="stat">
+                        <div class="value" id="stat-users">0</div>
+                        <div class="label">Users</div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>💱 Live Prices</h3>
+                <div id="prices-list">
+                    <div class="loading"><div class="spinner"></div>Loading...</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>✅ Daily Check-in</h3>
+                <div class="checkin-btn" id="checkin-btn" onclick="dailyCheckin()">
+                    🎁 Click to Claim +10 Points
+                </div>
+                <p style="text-align:center; color:#888; font-size:0.85em;">Points: <span id="user-points">0</span></p>
+            </div>
+        </div>
+
+        <!-- Wallet Tab -->
+        <div class="tab-content" id="tab-wallet">
+            <div class="card">
+                <h3>💰 TON Wallet</h3>
+                <div class="balance" id="wallet-balance">
+                    0.00 <small>TON</small>
+                </div>
+                <p style="text-align:center; color:#888; font-size:0.85em; word-break:break-all;" id="wallet-address">
+                    Not created
+                </p>
+                <button class="btn btn-primary" onclick="createWallet()">Create Wallet</button>
+                <button class="btn btn-secondary" onclick="refreshBalance()">Refresh Balance</button>
+            </div>
+
+            <div class="card">
+                <h3>📈 Portfolio</h3>
+                <div class="grid">
+                    <div class="stat">
+                        <div class="value" id="portfolio-ton">0</div>
+                        <div class="label">TON</div>
+                    </div>
+                    <div class="stat">
+                        <div class="value" id="portfolio-usd">$0</div>
+                        <div class="label">USD Value</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Earn Tab -->
+        <div class="tab-content" id="tab-earn">
+            <div class="card">
+                <h3>🪙 Active Airdrops</h3>
+                <div id="airdrops-list">
+                    <div class="loading"><div class="spinner"></div>Loading...</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>🤖 Bot Farm</h3>
+                <div id="botfarms-list">
+                    <div class="loading"><div class="spinner"></div>Loading...</div>
+                </div>
+            </div>
+
+            <div class="card">
+                <h3>💡 Quick Tasks</h3>
+                <button class="btn btn-primary" onclick="doTask('daily_checkin')">📅 Daily Check-in (+10)</button>
+                <button class="btn btn-secondary" onclick="doTask('channel_join')">📢 Join Channel (+30)</button>
+                <button class="btn btn-secondary" onclick="doTask('bot_start')">🤖 Start Bot (+20)</button>
+                <button class="btn btn-warning" onclick="doTask('referral')">👥 Invite Friend (+100)</button>
+            </div>
+        </div>
+
+        <!-- Terminal Tab -->
+        <div class="tab-content" id="tab-terminal">
+            <div class="card">
+                <h3>💻 OWL Terminal</h3>
+                <div class="terminal" id="terminal-output">
+                    <div class="line"><span class="prompt">owl@telegram</span>:<span class="output">~ $</span> <span>Welcome to OWL Terminal v2.0</span></div>
+                    <div class="line"><span class="prompt">owl@telegram</span>:<span class="output">~ $</span> <span>Type any command...</span></div>
+                </div>
+                <input type="text" class="input-field" id="terminal-input" placeholder="Enter command..." onkeypress="handleTerminalKey(event)">
+            </div>
+
+            <div class="card">
+                <h3>⚡ Quick Commands</h3>
+                <button class="btn btn-secondary" onclick="quickCmd('status')">📊 Status</button>
+                <button class="btn btn-secondary" onclick="quickCmd('prices')">💱 Prices</button>
+                <button class="btn btn-secondary" onclick="quickCmd('servers')">🔧 Servers</button>
+                <button class="btn btn-secondary" onclick="quickCmd('ai')">🤖 AI Chat</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Telegram Web App
+        const tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
+
+        const API = 'http://192.168.1.184:9095';
+        let userId = null;
+        let username = null;
+
+        // Get user info from Telegram
+        if (tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            userId = tg.initDataUnsafe.user.id;
+            username = tg.initDataUnsafe.user.username || tg.initDataUnsafe.user.first_name;
+            registerUser();
+        }
+
+        function registerUser() {
+            if (!userId) return;
+            fetch(API + '/register', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({user_id: userId, username: username})
+            })
+            .then(r => r.json())
+            .then(d => {
+                if (d.user) {
+                    document.getElementById('user-points').textContent = d.user.earnings || 0;
+                }
+                if (d.wallet) {
+                    document.getElementById('wallet-address').textContent = d.wallet.address;
+                }
+            })
+            .catch(e => console.error('Register error:', e));
+        }
+
+        function showTab(name) {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`.tab[onclick="showTab('${name}')"]`).classList.add('active');
+            document.getElementById('tab-' + name).classList.add('active');
+
+            if (name === 'earn') loadEarnData();
+            if (name === 'wallet') loadWalletData();
+            if (name === 'dashboard') loadDashboard();
+        }
+
+        function loadDashboard() {
+            // Load prices
+            fetch(API + '/prices')
+            .then(r => r.json())
+            .then(data => {
+                const list = document.getElementById('prices-list');
+                list.innerHTML = '';
+                const icons = {bitcoin: '₿', ethereum: 'Ξ', toncoin: '💎', solana: '◎', cardano: '₳', polkadot: '●'};
+                for (const [coin, info] of Object.entries(data)) {
+                    const change = info.usd_24h_change || 0;
+                    const cls = change >= 0 ? 'price-up' : 'price-down';
+                    const sign = change >= 0 ? '+' : '';
+                    list.innerHTML += `
+                        <div class="price-item">
+                            <span>${icons[coin] || '●'} ${coin.toUpperCase()}</span>
+                            <span class="${cls}">$${info.usd?.toLocaleString() || 'N/A'} (${sign}${change.toFixed(1)}%)</span>
+                        </div>`;
+                }
+            })
+            .catch(() => {
+                document.getElementById('prices-list').innerHTML = '<p style="color:#888">Could not load prices</p>';
+            });
+
+            // Load status
+            fetch(API + '/status')
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('stat-users').textContent = data.users || 0;
+            })
+            .catch(() => {});
+        }
+
+        function loadEarnData() {
+            // Airdrops
+            fetch(API + '/airdrops')
+            .then(r => r.json())
+            .then(data => {
+                const list = document.getElementById('airdrops-list');
+                list.innerHTML = '';
+                data.forEach(a => {
+                    list.innerHTML += `
+                        <div class="airdrop-item">
+                            <div class="name">${a.name}</div>
+                            <div class="reward">🎁 ${a.reward}</div>
+                            <span class="status status-${a.status}">${a.status}</span>
+                        </div>`;
+                });
+            })
+            .catch(() => {
+                document.getElementById('airdrops-list').innerHTML = '<p style="color:#888">Could not load airdrops</p>';
+            });
+
+            // Bot farms
+            fetch(API + '/botfarms')
+            .then(r => r.json())
+            .then(data => {
+                const list = document.getElementById('botfarms-list');
+                list.innerHTML = '';
+                data.forEach(b => {
+                    list.innerHTML += `
+                        <div class="bot-item">
+                            <div class="name">${b.name}</div>
+                            <div class="earning">💰 ${b.earning}</div>
+                            <span class="status status-${b.status}">${b.status}</span>
+                        </div>`;
+                });
+            })
+            .catch(() => {
+                document.getElementById('botfarms-list').innerHTML = '<p style="color:#888">Could not load bot farms</p>';
+            });
+        }
+
+        function loadWalletData() {
+            if (!userId) return;
+            fetch(API + '/wallet/balance', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({user_id: userId})
+            })
+            .then(r => r.json())
+            .then(data => {
+                document.getElementById('wallet-balance').innerHTML = `${data.balance?.toFixed(4) || '0.0000'} <small>TON</small>`;
+                document.getElementById('wallet-address').textContent = data.address || 'Not created';
+            })
+            .catch(() => {});
+        }
+
+        function createWallet() {
+            if (!userId) return showNotification('User not identified');
+            fetch(API + '/wallet/create', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({user_id: userId})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    document.getElementById('wallet-address').textContent = data.wallet.address;
+                    showNotification('✅ Wallet created!');
+                }
+            })
+            .catch(() => showNotification('❌ Error creating wallet'));
+        }
+
+        function refreshBalance() {
+            loadWalletData();
+            showNotification('🔄 Balance refreshed');
+        }
+
+        function dailyCheckin() {
+            doTask('daily_checkin');
+            document.getElementById('checkin-btn').classList.add('done');
+            document.getElementById('checkin-btn').textContent = '✅ Claimed! Come back tomorrow';
+        }
+
+        function doTask(type) {
+            if (!userId) return showNotification('User not identified');
+            fetch(API + '/task', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({user_id: userId, task_type: type})
+            })
+            .then(r => r.json())
+            .then(data => {
+                if (data.success) {
+                    showNotification(`✅ +${data.reward} points!`);
+                    document.getElementById('user-points').textContent = data.user?.earnings || 0;
+                }
+            })
+            .catch(() => showNotification('❌ Error'));
+        }
+
+        function quickCmd(cmd) {
+            const output = document.getElementById('terminal-output');
+            output.innerHTML += `<div class="line"><span class="prompt">owl@telegram</span>:<span class="output">~ $</span> ${cmd}</div>`;
+
+            let response = '';
+            switch(cmd) {
+                case 'status': response = '🟢 All 9 services running | Qwen 2.5 7B active'; break;
+                case 'prices': response = '₿ $63,062 | Ξ $1,702 | 💎 $6.45 | ◎ $69.13'; break;
+                case 'servers': response = 'Proxy:8090 RAG:9092 AirLLM:9093 GitHub:9094 ADB:9091'; break;
+                case 'ai': response = '🤖 Qwen 2.5 7B ready. Type your message!'; break;
+                default: response = `Command: ${cmd}`;
+            }
+            output.innerHTML += `<div class="line"><span class="output">${response}</span></div>`;
+            output.scrollTop = output.scrollHeight;
+
+            // Switch to terminal tab
+            showTab('terminal');
+        }
+
+        function handleTerminalKey(e) {
+            if (e.key === 'Enter') {
+                const input = document.getElementById('terminal-input');
+                const cmd = input.value.trim();
+                if (cmd) {
+                    quickCmd(cmd);
+                    input.value = '';
+                }
+            }
+        }
+
+        function showNotification(text) {
+            const n = document.getElementById('notification');
+            n.textContent = text;
+            n.style.display = 'block';
+            setTimeout(() => { n.style.display = 'none'; }, 3000);
+        }
+
+        // Auto-load dashboard
+        loadDashboard();
+
+        // Refresh prices every 30 seconds
+        setInterval(loadDashboard, 30000);
+    </script>
+</body>
+</html>
