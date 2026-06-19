@@ -1,0 +1,32 @@
+{
+    "name": "HERMES-OS",
+    "image": "mcr.microsoft.com/devcontainers/python:3.11",
+    "features": {
+        "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+        "ghcr.io/devcontainers/features/github-cli:1": {},
+        "ghcr.io/devcontainers/features/node:1": {}
+    },
+    "postCreateCommand": "bash .devcontainer/setup.sh",
+    "forwardPorts": [8090, 9090, 9091, 9092, 9093, 9094, 9095, 9096, 9097, 9098],
+    "portsAttributes": {
+        "8090": {"label": "Proxy API"},
+        "9090": {"label": "Control Plane"},
+        "9091": {"label": "ADB Bridge"},
+        "9092": {"label": "RAG Server"},
+        "9093": {"label": "AirLLM"},
+        "9094": {"label": "GitHub Server"},
+        "9095": {"label": "Mini App"},
+        "9096": {"label": "Web3 OS"},
+        "9097": {"label": "Browser Agent"},
+        "9098": {"label": "Web3 Money Engine"}
+    },
+    "customizations": {
+        "vscode": {
+            "extensions": [
+                "ms-python.python",
+                "ms-azuretools.vscode-docker",
+                "github.copilot"
+            ]
+        }
+    }
+}

@@ -1,0 +1,77 @@
+name: HERMES-OS CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  schedule:
+    - cron: '*/5 * * * *'  # Every 5 minutes
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install -r requirements.txt
+          sudo apt-get update && sudo apt-get install -y redis-server nginx
+
+      - name: Start Redis
+        run: redis-server --daemonize yes
+
+      - name: Run tests
+        run: |
+          python3 -c "import hermes; print('hermes.py OK')"
+          python3 -c "import proxy_api_os; print('proxy_api_os.py OK')"
+          python3 -c "import control_plane; print('control_plane.py OK')"
+          python3 -c "import rag_server; print('rag_server.py OK')"
+          python3 -c "import airllm_server; print('airllm_server.py OK')"
+          python3 -c "import github_server; print('github_server.py OK')"
+          python3 -c "import miniapp_agent; print('miniapp_agent.py OK')"
+          python3 -c "import web3_os; print('web3_os.py OK')"
+          python3 -c "import web3_money_engine; print('web3_money_engine.py OK')"
+          python3 -c "import browser_agent; print('browser_agent.py OK')"
+          python3 -c "import adb_bridge; print('adb_bridge.py OK')"
+
+      - name: Start services test
+        run: |
+          timeout 30 bash start-all.sh || true
+          curl -s http://localhost:8090/api/v1/health || echo "Proxy not ready"
+          curl -s http://localhost:9090/health || echo "Control not ready"
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy to Codespace
+        run: |
+          echo "Deploying HERMES-OS..."
+          gh codespace list
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  security-scan:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Security scan with Bandit
+        run: |
+          pip install bandit
+          bandit -r . -ll --exclude .git,__pycache__,venv
+
+      - name: Dependency check
+        run: |
+          pip install safety
+          safety check -r requirements.txt || true

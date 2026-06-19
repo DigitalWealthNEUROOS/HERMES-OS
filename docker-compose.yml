@@ -1,0 +1,178 @@
+version: '3.8'
+
+services:
+  # Core Services
+  hermes:
+    build: .
+    command: python3 hermes.py
+    ports:
+      - "8080:8080"
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    restart: always
+    networks:
+      - hermes-net
+
+  proxy-api:
+    build: .
+    command: python3 proxy_api_os.py
+    ports:
+      - "8090:8090"
+    environment:
+      - REDIS_URL=redis://redis:6379
+    depends_on:
+      - redis
+    restart: always
+    networks:
+      - hermes-net
+
+  control-plane:
+    build: .
+    command: python3 control_plane.py
+    ports:
+      - "9090:9090"
+    depends_on:
+      - redis
+      - proxy-api
+    restart: always
+    networks:
+      - hermes-net
+
+  # AI Services
+  rag-server:
+    build: .
+    command: python3 rag_server.py
+    ports:
+      - "9092:9092"
+    depends_on:
+      - redis
+    restart: always
+    networks:
+      - hermes-net
+
+  airllm:
+    build: .
+    command: python3 airllm_server.py
+    ports:
+      - "9093:9093"
+    depends_on:
+      - proxy-api
+      - rag-server
+    restart: always
+    networks:
+      - hermes-net
+
+  # Web3 Services
+  web3-os:
+    build: .
+    command: python3 web3_os.py
+    ports:
+      - "9096:9096"
+    depends_on:
+      - redis
+    restart: always
+    networks:
+      - hermes-net
+
+  web3-money:
+    build: .
+    command: python3 web3_money_engine.py
+    ports:
+      - "9098:9098"
+    depends_on:
+      - web3-os
+    restart: always
+    networks:
+      - hermes-net
+
+  # Browser & Search
+  browser-agent:
+    build: .
+    command: python3 browser_agent.py
+    ports:
+      - "9097:9097"
+    depends_on:
+      - redis
+    restart: always
+    networks:
+      - hermes-net
+
+  # Integration Services
+  github-server:
+    build: .
+    command: python3 github_server.py
+    ports:
+      - "9094:9094"
+    depends_on:
+      - redis
+    restart: always
+    networks:
+      - hermes-net
+
+  miniapp-agent:
+    build: .
+    command: python3 miniapp_agent.py
+    ports:
+      - "9095:9095"
+    depends_on:
+      - redis
+    restart: always
+    networks:
+      - hermes-net
+
+  adb-bridge:
+    build: .
+    command: python3 adb_bridge.py
+    ports:
+      - "9091:9091"
+    restart: always
+    networks:
+      - hermes-net
+
+  # Infrastructure
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    restart: always
+    networks:
+      - hermes-net
+
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf
+      - ./miniapp:/var/www/miniapp
+    depends_on:
+      - hermes
+      - proxy-api
+    restart: always
+    networks:
+      - hermes-net
+
+  # Monitoring
+  monitor:
+    build: .
+    command: bash keepalive.sh
+    depends_on:
+      - redis
+      - proxy-api
+      - hermes
+    restart: always
+    networks:
+      - hermes-net
+
+volumes:
+  redis-data:
+
+networks:
+  hermes-net:
+    driver: bridge
